@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>서울시 신혼부부 전세대출 이자지원 계산기</title>
+<style>
+  :root {
+    --blue: #1a56db;
+    --blue-light: #e8f0fe;
+    --blue-dark: #1e40af;
+    --green: #057a55;
+    --green-light: #def7ec;
+    --red: #e02424;
+    --red-light: #fde8e8;
+    --yellow: #9f580a;
+    --yellow-light: #fdf6b2;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    --radius: 12px;
+    --shadow: 0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
+    --shadow-md: 0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.06);
+    --shadow-lg: 0 10px 15px rgba(0,0,0,.07), 0 4px 6px rgba(0,0,0,.05);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', -apple-system, sans-serif; background: #f0f4ff; color: var(--gray-800); line-height: 1.6; min-height: 100vh; }
+
+  /* Header */
+  .header { background: linear-gradient(135deg, #1e3a8a 0%, #1a56db 60%, #3b82f6 100%); color: #fff; padding: 28px 24px 24px; text-align: center; }
+  .header-badge { display: inline-block; background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.3); border-radius: 20px; padding: 4px 14px; font-size: 12px; font-weight: 600; letter-spacing: .5px; margin-bottom: 12px; }
+  .header h1 { font-size: clamp(18px, 4vw, 26px); font-weight: 800; margin-bottom: 6px; }
+  .header p { font-size: 13px; opacity: .85; }
+
+  /* Tabs */
+  .tabs { display: flex; background: #fff; border-bottom: 2px solid var(--gray-200); overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: 0 0 auto; padding: 14px 18px; font-size: 13px; font-weight: 600; color: var(--gray-500); border: none; background: none; cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .15s; }
+  .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+  .tab:hover:not(.active) { color: var(--gray-700); background: var(--gray-50); }
+
+  /* Main */
+  .main { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Cards */
+  .card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; margin-bottom: 16px; }
+  .card-title { font-size: 15px; font-weight: 700; color: var(--gray-800); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .card-title .icon { font-size: 18px; }
+
+  /* Summary grid */
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .summary-item { background: var(--blue-light); border-radius: 10px; padding: 14px; }
+  .summary-label { font-size: 11px; font-weight: 600; color: var(--blue-dark); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 4px; }
+  .summary-value { font-size: clamp(16px, 3.5vw, 22px); font-weight: 800; color: var(--blue-dark); }
+  .summary-sub { font-size: 11px; color: var(--blue); margin-top: 2px; }
+  .summary-item.green { background: var(--green-light); }
+  .summary-item.green .summary-label, .summary-item.green .summary-value { color: var(--green); }
+  .summary-item.green .summary-sub { color: #065f46; }
+  .summary-item.yellow { background: var(--yellow-light); }
+  .summary-item.yellow .summary-label, .summary-item.yellow .summary-value { color: var(--yellow); }
+
+  /* Tables */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tbl th { background: var(--gray-100); padding: 9px 12px; text-align: left; font-weight: 700; color: var(--gray-700); border-bottom: 1px solid var(--gray-200); }
+  .tbl td { padding: 9px 12px; border-bottom: 1px solid var(--gray-100); color: var(--gray-700); }
+  .tbl tr:last-child td { border-bottom: none; }
+  .tbl tr.highlight td { background: #fff8e1; font-weight: 700; }
+  .tbl tr.total td { background: var(--blue-light); font-weight: 700; color: var(--blue-dark); }
+  .tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .tbl .tag { display: inline-block; background: var(--green-light); color: var(--green); font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 10px; }
+  .tbl .tag.red { background: var(--red-light); color: var(--red); }
+
+  /* Form controls */
+  .form-row { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 6px; }
+  .form-label span { font-size: 11px; font-weight: 400; color: var(--gray-400); margin-left: 6px; }
+  .form-input { width: 100%; padding: 10px 14px; border: 1.5px solid var(--gray-300); border-radius: 8px; font-size: 14px; color: var(--gray-800); outline: none; transition: border .15s; font-family: inherit; }
+  .form-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(26,86,219,.12); }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 480px) { .form-grid { grid-template-columns: 1fr; } }
+
+  /* Slider */
+  .slider-wrap { margin-bottom: 8px; }
+  .slider-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--gray-400); margin-top: 4px; }
+  input[type=range] { -webkit-appearance: none; width: 100%; height: 6px; border-radius: 3px; background: var(--gray-200); outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--blue); cursor: pointer; box-shadow: 0 1px 4px rgba(26,86,219,.4); }
+  input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--blue); cursor: pointer; border: none; }
+
+  /* Result box */
+  .result-box { background: linear-gradient(135deg, #1e3a8a, #1a56db); color: #fff; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .result-box .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .result-box .row:last-child { margin-bottom: 0; }
+  .result-box .lbl { font-size: 13px; opacity: .85; }
+  .result-box .val { font-size: 18px; font-weight: 800; }
+  .result-box .val.big { font-size: clamp(22px, 5vw, 32px); }
+  .result-box .divider { border: none; border-top: 1px solid rgba(255,255,255,.2); margin: 12px 0; }
+
+  /* Rate badge */
+  .rate-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; }
+  .rate-badge.blue { background: var(--blue-light); color: var(--blue-dark); }
+  .rate-badge.green { background: var(--green-light); color: var(--green); }
+  .rate-badge.red { background: var(--red-light); color: var(--red); }
+
+  /* Bracket indicator */
+  .bracket-bar { margin-top: 16px; }
+  .bracket-title { font-size: 12px; font-weight: 600; color: var(--gray-500); margin-bottom: 8px; }
+  .bracket-list { display: flex; flex-direction: column; gap: 4px; }
+  .bracket-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--gray-200); font-size: 12px; }
+  .bracket-item.active { background: var(--blue-light); border-color: var(--blue); }
+  .bracket-item .bi-range { flex: 1; color: var(--gray-600); }
+  .bracket-item .bi-rate { font-weight: 700; color: var(--gray-500); }
+  .bracket-item.active .bi-rate { color: var(--blue-dark); }
+  .bracket-item .bi-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gray-300); flex-shrink: 0; }
+  .bracket-item.active .bi-dot { background: var(--blue); }
+
+  /* Info box */
+  .info-box { background: var(--yellow-light); border: 1px solid #f6d860; border-radius: 10px; padding: 14px 16px; font-size: 13px; color: var(--yellow); line-height: 1.7; margin-bottom: 16px; }
+  .info-box strong { color: #78350f; }
+  .notice-box { background: var(--gray-50); border-left: 3px solid var(--blue); border-radius: 0 8px 8px 0; padding: 12px 14px; font-size: 12px; color: var(--gray-600); line-height: 1.7; margin-top: 12px; }
+
+  /* Checklist */
+  .checklist { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .checklist li { display: flex; gap: 10px; font-size: 13px; color: var(--gray-700); align-items: flex-start; }
+  .checklist li::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+  .checklist li.warn::before { content: '⚠'; color: var(--yellow); }
+
+  /* Conversion result */
+  .conv-result { background: var(--green-light); border: 1px solid #a7f3d0; border-radius: 10px; padding: 16px; text-align: center; }
+  .conv-result .cv-label { font-size: 12px; font-weight: 600; color: var(--green); margin-bottom: 4px; }
+  .conv-result .cv-value { font-size: clamp(22px, 5vw, 30px); font-weight: 800; color: #065f46; }
+  .conv-result .cv-sub { font-size: 12px; color: var(--green); margin-top: 4px; }
+  .conv-result.fail { background: var(--red-light); border-color: #fca5a5; }
+  .conv-result.fail .cv-label, .conv-result.fail .cv-value, .conv-result.fail .cv-sub { color: var(--red); }
+
+  /* COFIX table */
+  .cofix-table { overflow-x: auto; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .summary-grid { grid-template-columns: 1fr 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-badge">서울특별시공고 제2025-3067호</div>
+  <h1>서울시 신혼부부 임차보증금 이자지원 계산기</h1>
+  <p>소득 산정 · 이자 시나리오 · COFIX 감도 · 월세→전세 환산</p>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('dashboard')">📋 내 상황 요약</button>
+  <button class="tab" onclick="showTab('interest')">💰 이자 계산기</button>
+  <button class="tab" onclick="showTab('income')">🧮 소득 산정기</button>
+  <button class="tab" onclick="showTab('convert')">🔄 월세→전세 환산</button>
+  <button class="tab" onclick="showTab('guide')">📌 체크포인트</button>
+</div>
+
+<div class="main">
+
+  <!-- ① 대시보드 -->
+  <div id="tab-dashboard" class="panel active">
+    <div class="summary-grid">
+      <div class="summary-item">
+        <div class="summary-label">부부합산 연소득</div>
+        <div class="summary-value">₩91,201,413</div>
+        <div class="summary-sub">유태현 + 이채린 (2025년 귀속)</div>
+      </div>
+      <div class="summary-item green">
+        <div class="summary-label">소득구간 지원금리</div>
+        <div class="summary-value">1.5% + 0.2%</div>
+        <div class="summary-sub">예비신혼 추가 적용 → 합계 1.7%</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-label">실부담금리</div>
+        <div class="summary-value">연 2.25%</div>
+        <div class="summary-sub">대출금리 3.95% − 지원 1.7%</div>
+      </div>
+      <div class="summary-item yellow">
+        <div class="summary-label">3억 기준 월 이자</div>
+        <div class="summary-value">₩562,500</div>
+        <div class="summary-sub">연 ₩6,750,000 · 2년 ₩13,500,000</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📊</span>금리 구조 한눈에 보기</div>
+      <table class="tbl">
+        <thead><tr><th>항목</th><th class="num">금리</th><th>비고</th></tr></thead>
+        <tbody>
+          <tr><td>① 신잔액 COFIX (6개월)</td><td class="num">2.50%</td><td>2026.5월 기준</td></tr>
+          <tr><td>② 가산금리</td><td class="num">+1.45%</td><td>협약 고정</td></tr>
+          <tr class="highlight"><td><strong>대출금리 합계</strong></td><td class="num"><strong>3.95%</strong></td><td>6개월 변동</td></tr>
+          <tr><td>③ 소득구간 지원 (9천~1.1억)</td><td class="num">−1.50%</td><td></td></tr>
+          <tr><td>④ 예비신혼부부 추가 지원</td><td class="num">−0.20%</td><td>최초 대출 시에만</td></tr>
+          <tr class="total"><td><strong>실부담금리 (예비신혼 적용)</strong></td><td class="num"><strong>2.25%</strong></td><td>하한 1.0%</td></tr>
+          <tr><td>(참고) 기한연장 시 — 소득구간 단독</td><td class="num">2.45%</td><td>예비신혼 0.2% 제외</td></tr>
+          <tr><td>(향후) 1자녀 출산 후 연장 시</td><td class="num">1.95%</td><td>다자녀 0.5% 추가</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">👫</span>소득 산정 결과 (법정 기준)</div>
+      <table class="tbl">
+        <thead><tr><th>구분</th><th>소득 종류</th><th class="num">적용 금액</th><th>기준</th></tr></thead>
+        <tbody>
+          <tr><td>유태현</td><td>사업소득</td><td class="num">₩17,442,293</td><td>소득금액</td></tr>
+          <tr><td>유태현</td><td>근로소득</td><td class="num">₩30,159,120</td><td>수입금액(총급여)</td></tr>
+          <tr><td>이채린</td><td>근로소득 (㈜세일림)</td><td class="num">₩43,600,000</td><td>수입금액(총급여)</td></tr>
+          <tr class="total"><td colspan="2"><strong>부부합산 총액</strong></td><td class="num"><strong>₩91,201,413</strong></td><td><span class="tag">1.5% 구간</span></td></tr>
+        </tbody>
+      </table>
+      <div class="notice-box">
+        ⚠ 9천만원 경계 초과분 <strong>₩1,201,413</strong> — 은행 최종 심사 시 인정소득이 달라질 경우 구간이 변동될 수 있습니다. 협약은행 사전상담에서 서면으로 산정 내역 확인을 권장합니다.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">💸</span>3억 대출 · 이자 시나리오 요약</div>
+      <table class="tbl">
+        <thead><tr><th>구분</th><th class="num">적용금리</th><th class="num">월 이자</th><th class="num">연간 이자</th><th class="num">2년 총액</th></tr></thead>
+        <tbody>
+          <tr><td>총 대출이자</td><td class="num">3.95%</td><td class="num">₩987,500</td><td class="num">₩11,850,000</td><td class="num">₩23,700,000</td></tr>
+          <tr><td>서울시 지원 (1.5%+0.2%)</td><td class="num">1.70%</td><td class="num">₩425,000</td><td class="num">₩5,100,000</td><td class="num">₩10,200,000</td></tr>
+          <tr class="highlight"><td><strong>본인부담 (예비신혼 확정)</strong></td><td class="num"><strong>2.25%</strong></td><td class="num"><strong>₩562,500</strong></td><td class="num"><strong>₩6,750,000</strong></td><td class="num"><strong>₩13,500,000</strong></td></tr>
+          <tr><td>(참고) 기한연장 후</td><td class="num">2.45%</td><td class="num">₩612,500</td><td class="num">₩7,350,000</td><td class="num">₩14,700,000</td></tr>
+          <tr><td>(향후) 1자녀 출산 후</td><td class="num">1.95%</td><td class="num">₩487,500</td><td class="num">₩5,850,000</td><td class="num">₩11,700,000</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ② 이자 계산기 -->
+  <div id="tab-interest" class="panel">
+    <div class="card">
+      <div class="card-title"><span class="icon">⚙️</span>조건 설정</div>
+
+      <div class="form-row">
+        <label class="form-label">대출금액 <span id="loanDisplay">₩300,000,000</span></label>
+        <div class="slider-wrap">
+          <input type="range" id="loanSlider" min="50000000" max="300000000" step="10000000" value="300000000" oninput="calcInterest()">
+          <div class="slider-labels"><span>5천만원</span><span>1억</span><span>2억</span><span>3억</span></div>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">COFIX (신잔액, 6개월) <span>현재 2.50%</span></label>
+          <input type="number" id="cofix" class="form-input" value="2.50" min="1" max="6" step="0.05" oninput="calcInterest()">
+        </div>
+        <div class="form-row">
+          <label class="form-label">소득구간 지원금리 <span>%</span></label>
+          <select id="supportRate" class="form-input" onchange="calcInterest()">
+            <option value="3.0">3.0% (0~3천만원)</option>
+            <option value="2.5">2.5% (3~6천만원)</option>
+            <option value="2.0">2.0% (6~9천만원)</option>
+            <option value="1.5" selected>1.5% (9천~1.1억) ← 해당</option>
+            <option value="1.0">1.0% (1.1~1.3억)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">예비신혼 추가 지원</label>
+          <select id="preweddingRate" class="form-input" onchange="calcInterest()">
+            <option value="0.2" selected>+0.2% 적용 (예비신혼)</option>
+            <option value="0">미적용</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-label">다자녀 추가 지원</label>
+          <select id="childRate" class="form-input" onchange="calcInterest()">
+            <option value="0" selected>미적용</option>
+            <option value="0.5">+0.5% (1자녀)</option>
+            <option value="1.0">+1.0% (2자녀)</option>
+            <option value="1.5">+1.5% (3자녀)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-box" id="interestResult">
+      <div class="row"><span class="lbl">대출금리 (COFIX + 가산 1.45%)</span><span class="val" id="r_loan">3.95%</span></div>
+      <div class="row"><span class="lbl">서울시 총 지원금리</span><span class="val" id="r_support">1.70%</span></div>
+      <hr class="divider">
+      <div class="row"><span class="lbl">실부담금리</span><span class="val big" id="r_actual">2.25%</span></div>
+      <div class="row"><span class="lbl">월 이자</span><span class="val" id="r_monthly">₩562,500</span></div>
+      <div class="row"><span class="lbl">연간 이자</span><span class="val" id="r_annual">₩6,750,000</span></div>
+      <div class="row"><span class="lbl">2년 총액</span><span class="val" id="r_2yr">₩13,500,000</span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📉</span>COFIX 감도 분석 <small style="font-size:12px;font-weight:400;color:var(--gray-400)">(현재 설정 대출금액 기준)</small></div>
+      <div class="cofix-table">
+        <table class="tbl" id="cofixTable"></table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📊</span>대출금액별 본인부담 이자 <small style="font-size:12px;font-weight:400;color:var(--gray-400)">(현재 설정 금리 기준)</small></div>
+      <table class="tbl" id="loanTable"></table>
+    </div>
+  </div>
+
+  <!-- ③ 소득 산정기 -->
+  <div id="tab-income" class="panel">
+    <div class="info-box">
+      <strong>소득 산정 기준 (법정)</strong><br>
+      근로소득 → <strong>수입금액(총급여)</strong> 적용<br>
+      사업소득 → <strong>소득금액(필요경비 차감 후)</strong> 적용<br>
+      겸업자는 소득원별로 각각 적용 후 합산
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">👤</span>배우자 A 소득 입력</div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">근로소득 — 수입금액(총급여) <span>원</span></label>
+          <input type="number" id="a_salary" class="form-input" placeholder="예: 30159120" value="30159120" oninput="calcIncome()">
+        </div>
+        <div class="form-row">
+          <label class="form-label">사업소득 — 소득금액 <span>원</span></label>
+          <input type="number" id="a_business" class="form-input" placeholder="예: 17442293" value="17442293" oninput="calcIncome()">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">👤</span>배우자 B 소득 입력</div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">근로소득 — 수입금액(총급여) <span>원</span></label>
+          <input type="number" id="b_salary" class="form-input" placeholder="예: 43600000" value="43600000" oninput="calcIncome()">
+        </div>
+        <div class="form-row">
+          <label class="form-label">사업소득 — 소득금액 <span>원</span></label>
+          <input type="number" id="b_business" class="form-input" placeholder="0" value="0" oninput="calcIncome()">
+        </div>
+      </div>
+    </div>
+
+    <div id="incomeResult"></div>
+  </div>
+
+  <!-- ④ 월세→전세 환산 -->
+  <div id="tab-convert" class="panel">
+    <div class="info-box">
+      <strong>환산 임차보증금 = 월세보증금 + (월세 × 12개월 ÷ 전월세전환율)</strong><br>
+      환산 임차보증금이 <strong>7억원 이하</strong>인 경우에만 이자지원 신청 가능합니다.<br>
+      순수 전세(월세 없음)는 계약서상 보증금을 그대로 적용합니다.
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">🏠</span>임대차 조건 입력</div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">월세보증금 <span>원</span></label>
+          <input type="number" id="cv_deposit" class="form-input" placeholder="예: 200000000" value="" oninput="calcConvert()">
+        </div>
+        <div class="form-row">
+          <label class="form-label">월세 <span>원/월 (없으면 0)</span></label>
+          <input type="number" id="cv_monthly" class="form-input" placeholder="예: 1000000" value="" oninput="calcConvert()">
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">전월세 전환율 <span>% (서울주거포털 확인, 일반적으로 4~6%)</span></label>
+        <input type="number" id="cv_rate" class="form-input" placeholder="5.0" value="5.0" step="0.1" oninput="calcConvert()">
+      </div>
+    </div>
+
+    <div id="convertResult"></div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📋</span>환산 예시 (전환율 5.0% 기준)</div>
+      <table class="tbl">
+        <thead><tr><th>유형</th><th class="num">보증금</th><th class="num">월세</th><th class="num">환산 보증금</th><th>7억 요건</th></tr></thead>
+        <tbody>
+          <tr><td>반전세①</td><td class="num">₩200,000,000</td><td class="num">₩1,000,000</td><td class="num">₩440,000,000</td><td><span class="tag">충족</span></td></tr>
+          <tr><td>고보증금 반전세②</td><td class="num">₩500,000,000</td><td class="num">₩1,000,000</td><td class="num">₩740,000,000</td><td><span class="tag red">초과·불가</span></td></tr>
+          <tr><td>순수 전세③</td><td class="num">₩700,000,000</td><td class="num">—</td><td class="num">₩700,000,000</td><td><span class="tag">충족</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ⑤ 체크포인트 -->
+  <div id="tab-guide" class="panel">
+    <div class="card">
+      <div class="card-title"><span class="icon">🏦</span>협약은행 상담 창구</div>
+      <table class="tbl">
+        <tbody>
+          <tr><td>대출 상담 담당</td><td>신한은행 도곡역지점 <strong>양은혜 팀장</strong> ☎ 02-553-7280</td></tr>
+          <tr><td>소개</td><td>신한은행 도곡PB센터 <strong>홍자경 팀장</strong> ☎ 02-2057-4943</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">💍</span>예비신혼부부 적용 필수 요건</div>
+      <ul class="checklist">
+        <li>서울시 추천서 신청일로부터 <strong>6개월 이내 결혼식</strong> 예정 — 예식장계약서 제출</li>
+        <li>대출신청·보증서 발급신청 완료 시점까지 <strong>혼인신고 전</strong> 상태 유지</li>
+        <li>대출실행일로부터 <strong>6개월 이내 혼인관계증명서</strong> 제출 필수</li>
+        <li class="warn">미제출 시 이자지원 즉시 중단 + 대출금 즉시 상환 대상</li>
+        <li>예비신혼 0.2%는 <strong>최초 대출 시에만</strong> 적용 (기한연장 시 제외)</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📋</span>자격 요건 체크</div>
+      <ul class="checklist">
+        <li>임차보증금 <strong>7억원 이하</strong> 주택 (월세 있으면 환산 임차보증금 기준)</li>
+        <li>부부 <strong>무주택</strong></li>
+        <li>대출 후 <strong>1개월 이내 서울 전입</strong> + 세대주 요건</li>
+        <li>대출 최대 <strong>₩3억원</strong> (임차보증금의 90% 이내)</li>
+        <li>이자지원 기간 기본 <strong>2년 + 2년</strong> (자녀 1명당 4년씩 최장 12년)</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">⚠️</span>경계선 주의사항</div>
+      <div class="info-box">
+        법정 기준 합산 <strong>₩91,201,413</strong>은 9천만원 구간 경계를 <strong>₩1,201,413</strong>만 초과한 상태입니다.<br><br>
+        은행이 최종 산정하는 인정소득(비과세 처리·연환산 등)에 따라 구간이 달라질 수 있습니다.<br>
+        한 구간 차이 → 3억 기준 연 <strong>₩1,500,000 · 2년 ₩3,000,000</strong> 부담 차이 발생
+      </div>
+      <ul class="checklist">
+        <li>협약은행 사전상담에서 <strong>인정소득 산정 내역 서면 확인</strong> 요청</li>
+        <li>3억 대출을 위한 <strong>HF 보증서 발급 가능금액</strong> 사전 조회</li>
+        <li>반환보증료 30만원 한도 — 대출실행일로부터 <strong>90일 이내</strong> 서울주거포털 신청</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📅</span>이자지원 중단 사유</div>
+      <ul class="checklist">
+        <li class="warn">연장 시점 합산 연소득 <strong>1억 3천만원 초과</strong></li>
+        <li class="warn">유주택</li>
+        <li class="warn">이혼 / 사별</li>
+        <li class="warn">혼인관계증명서 미제출 (예비신혼 적용 시)</li>
+      </ul>
+    </div>
+
+    <div class="notice-box" style="margin-top:0">
+      본 계산기는 정보 제공 목적으로 제작되었으며, 최종 대출조건·인정소득은 협약은행 심사 결과에 따라 확정됩니다.<br>
+      근거: 서울특별시공고 제2025-3067호 · HF 소득산정 기준(제6장) · 전국은행연합회 COFIX 공시(2026.6.15)
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+function showTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function fmt(n) {
+  return '₩' + Math.round(n).toLocaleString('ko-KR');
+}
+function pct(n) {
+  return (n * 100).toFixed(2).replace(/\.?0+$/, '') + '%';
+}
+
+// ── 이자 계산기 ──
+function calcInterest() {
+  const loan = parseInt(document.getElementById('loanSlider').value);
+  document.getElementById('loanDisplay').textContent = fmt(loan);
+
+  const cofixVal = parseFloat(document.getElementById('cofix').value) / 100;
+  const spread = 0.0145;
+  const loanRate = cofixVal + spread;
+
+  const support = parseFloat(document.getElementById('supportRate').value) / 100;
+  const prewedding = parseFloat(document.getElementById('preweddingRate').value) / 100;
+  const child = parseFloat(document.getElementById('childRate').value) / 100;
+
+  // 다자녀와 예비신혼은 택일이지만 선택대로 표시
+  const totalSupport = support + Math.max(prewedding, child);
+  const actualRate = Math.max(loanRate - totalSupport, 0.01);
+  const monthly = loan * actualRate / 12;
+  const annual = loan * actualRate;
+
+  document.getElementById('r_loan').textContent = pct(loanRate);
+  document.getElementById('r_support').textContent = pct(totalSupport);
+  document.getElementById('r_actual').textContent = pct(actualRate);
+  document.getElementById('r_monthly').textContent = fmt(monthly);
+  document.getElementById('r_annual').textContent = fmt(annual);
+  document.getElementById('r_2yr').textContent = fmt(annual * 2);
+
+  buildCofixTable(loan, support, prewedding, child);
+  buildLoanTable(loanRate, totalSupport);
+}
+
+function buildCofixTable(loan, support, prewedding, child) {
+  const cofixList = [2.00, 2.25, 2.50, 2.75, 3.00, 3.25];
+  const spread = 0.0145;
+  const addSupport = Math.max(prewedding, child);
+  let html = '<thead><tr><th>COFIX</th><th>대출금리</th><th>실부담금리</th><th class="num">월 이자</th><th class="num">연간 이자</th><th class="num">기준 대비</th></tr></thead><tbody>';
+  const baseCofix = 0.025;
+  const baseLoan = baseCofix + spread;
+  const baseActual = Math.max(baseLoan - support - addSupport, 0.01);
+  const baseAnnual = loan * baseActual;
+
+  cofixList.forEach(c => {
+    const lr = c / 100 + spread;
+    const ar = Math.max(lr - support - addSupport, 0.01);
+    const ann = loan * ar;
+    const diff = ann - baseAnnual;
+    const isCurrent = Math.abs(c - 2.50) < 0.001;
+    const diffStr = diff === 0 ? '기준' : (diff > 0 ? '+' + fmt(diff) : '−' + fmt(Math.abs(diff)));
+    html += `<tr${isCurrent ? ' class="highlight"' : ''}>
+      <td>${c.toFixed(2)}%${isCurrent ? ' <span class="tag">현재</span>' : ''}</td>
+      <td>${pct(lr)}</td>
+      <td>${pct(ar)}</td>
+      <td class="num">${fmt(loan * ar / 12)}</td>
+      <td class="num">${fmt(ann)}</td>
+      <td class="num">${diffStr}</td>
+    </tr>`;
+  });
+  html += '</tbody>';
+  document.getElementById('cofixTable').innerHTML = html;
+}
+
+function buildLoanTable(loanRate, totalSupport) {
+  const loans = [100000000, 150000000, 200000000, 250000000, 300000000];
+  let html = '<thead><tr><th>대출금액</th><th class="num">총 이자(연)</th><th class="num">서울시 지원(연)</th><th class="num">본인부담(연)</th><th class="num">본인부담(월)</th></tr></thead><tbody>';
+  loans.forEach(l => {
+    const total = l * loanRate;
+    const sup = l * totalSupport;
+    const actual = Math.max(l * (loanRate - totalSupport), l * 0.01);
+    const isCur = l === 300000000;
+    html += `<tr${isCur ? ' class="highlight"' : ''}>
+      <td>${fmt(l)}${isCur ? ' ★' : ''}</td>
+      <td class="num">${fmt(total)}</td>
+      <td class="num">${fmt(sup)}</td>
+      <td class="num">${fmt(actual)}</td>
+      <td class="num">${fmt(actual / 12)}</td>
+    </tr>`;
+  });
+  html += '</tbody>';
+  document.getElementById('loanTable').innerHTML = html;
+}
+
+// ── 소득 산정기 ──
+const BRACKETS = [
+  { max: 30000000, support: 0.030, label: '0 ~ 3천만원' },
+  { max: 60000000, support: 0.025, label: '3천만원 초과 ~ 6천만원' },
+  { max: 90000000, support: 0.020, label: '6천만원 초과 ~ 9천만원' },
+  { max: 110000000, support: 0.015, label: '9천만원 초과 ~ 1억 1천만원' },
+  { max: 130000000, support: 0.010, label: '1억 1천만원 초과 ~ 1억 3천만원' },
+  { max: Infinity, support: 0, label: '1억 3천만원 초과 (지원불가)' },
+];
+
+function getBracket(income) {
+  for (let b of BRACKETS) if (income <= b.max) return b;
+  return BRACKETS[BRACKETS.length - 1];
+}
+
+function calcIncome() {
+  const aSalary = parseFloat(document.getElementById('a_salary').value) || 0;
+  const aBusiness = parseFloat(document.getElementById('a_business').value) || 0;
+  const bSalary = parseFloat(document.getElementById('b_salary').value) || 0;
+  const bBusiness = parseFloat(document.getElementById('b_business').value) || 0;
+  const total = aSalary + aBusiness + bSalary + bBusiness;
+  const bracket = getBracket(total);
+  const loanRate = 0.025 + 0.0145; // 현재 기준
+  const actualBasic = Math.max(loanRate - bracket.support, 0.01);
+  const actualPrewedding = Math.max(loanRate - bracket.support - 0.002, 0.01);
+  const ref = 300000000;
+
+  const eligible = bracket.support > 0;
+  const el = document.getElementById('incomeResult');
+  if (!eligible) {
+    el.innerHTML = `<div class="result-box" style="background:linear-gradient(135deg,#991b1b,#e02424)">
+      <div class="row"><span class="lbl">부부합산 연소득</span><span class="val">${fmt(total)}</span></div>
+      <hr class="divider">
+      <div class="row"><span class="lbl">판정</span><span class="val big">지원 불가</span></div>
+      <div class="row"><span class="lbl">사유</span><span class="val">1억 3천만원 초과</span></div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="result-box">
+      <div class="row"><span class="lbl">부부합산 연소득</span><span class="val big">${fmt(total)}</span></div>
+      <hr class="divider">
+      <div class="row"><span class="lbl">적용 소득구간</span><span class="val">${bracket.label}</span></div>
+      <div class="row"><span class="lbl">소득구간 지원금리</span><span class="val">${pct(bracket.support)}</span></div>
+      <div class="row"><span class="lbl">실부담금리 (소득구간 단독)</span><span class="val">${pct(actualBasic)}</span></div>
+      <div class="row"><span class="lbl">실부담금리 (예비신혼 +0.2% 적용)</span><span class="val">${pct(actualPrewedding)}</span></div>
+      <hr class="divider">
+      <div class="row"><span class="lbl">3억 기준 월 이자 (예비신혼)</span><span class="val">${fmt(ref * actualPrewedding / 12)}</span></div>
+      <div class="row"><span class="lbl">3억 기준 연 이자 (예비신혼)</span><span class="val">${fmt(ref * actualPrewedding)}</span></div>
+    </div>
+    <div class="card">
+      <div class="bracket-title">소득구간 판정 현황</div>
+      <div class="bracket-list">
+        ${BRACKETS.filter(b => b.support > 0).map(b => `
+          <div class="bracket-item${b === bracket ? ' active' : ''}">
+            <div class="bi-dot"></div>
+            <div class="bi-range">${b.label}</div>
+            <div class="bi-rate">${pct(b.support)}</div>
+          </div>`).join('')}
+        <div class="bracket-item${!eligible ? ' active' : ''}">
+          <div class="bi-dot"></div>
+          <div class="bi-range">1억 3천만원 초과</div>
+          <div class="bi-rate">지원불가</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── 월세→전세 환산 ──
+function calcConvert() {
+  const deposit = parseFloat(document.getElementById('cv_deposit').value) || 0;
+  const monthly = parseFloat(document.getElementById('cv_monthly').value) || 0;
+  const rate = parseFloat(document.getElementById('cv_rate').value) / 100 || 0.05;
+  const el = document.getElementById('convertResult');
+  if (!deposit && !monthly) { el.innerHTML = ''; return; }
+
+  if (monthly === 0) {
+    const ok = deposit <= 700000000;
+    el.innerHTML = `<div class="conv-result${ok ? '' : ' fail'}">
+      <div class="cv-label">환산 임차보증금 (순수 전세)</div>
+      <div class="cv-value">${fmt(deposit)}</div>
+      <div class="cv-sub">${ok ? '✓ 7억원 이하 — 이자지원 신청 가능' : '✗ 7억원 초과 — 신청 불가'}</div>
+    </div>`;
+    return;
+  }
+
+  const converted = deposit + (monthly * 12 / rate);
+  const ok = converted <= 700000000;
+  el.innerHTML = `<div class="conv-result${ok ? '' : ' fail'}">
+    <div class="cv-label">환산 임차보증금</div>
+    <div class="cv-value">${fmt(converted)}</div>
+    <div class="cv-sub">${fmt(deposit)} + (${fmt(monthly)} × 12 ÷ ${(rate*100).toFixed(1)}%) = ${fmt(converted)}</div>
+    <div class="cv-sub" style="margin-top:6px;font-weight:700">${ok ? '✓ 7억원 이하 — 이자지원 신청 가능' : '✗ 7억원 초과 — 신청 불가'}</div>
+  </div>`;
+}
+
+// 초기화
+calcInterest();
+calcIncome();
+</script>
+</body>
+</html>
