@@ -35,6 +35,25 @@
   .header h1 { font-size: clamp(18px, 4vw, 26px); font-weight: 800; margin-bottom: 6px; }
   .header p { font-size: 13px; opacity: .85; }
 
+  .sync-bar { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 12px; font-size: 12px; flex-wrap: wrap; }
+  .sync-bar #syncStatus { opacity: .8; }
+  .sync-btn { background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.35); color: #fff; border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .sync-btn:hover { background: rgba(255,255,255,.25); }
+
+  .sync-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+  .sync-modal { background: #fff; border-radius: var(--radius); padding: 24px; max-width: 340px; width: 100%; }
+  .sync-modal h3 { font-size: 16px; margin-bottom: 8px; }
+  .sync-modal-desc { font-size: 12px; color: var(--gray-500); margin-bottom: 14px; line-height: 1.5; }
+  .sync-modal input { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 14px; margin-bottom: 12px; }
+  .sync-modal-btns { display: flex; flex-direction: column; gap: 8px; }
+  .sync-modal-save, .sync-modal-load { padding: 11px; border-radius: 8px; border: none; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .sync-modal-save { background: var(--blue); color: #fff; }
+  .sync-modal-load { background: var(--blue-light); color: var(--blue-dark); }
+  .sync-msg { font-size: 12px; margin-top: 10px; text-align: center; min-height: 16px; }
+  .sync-msg.ok { color: var(--green); }
+  .sync-msg.err { color: var(--red); }
+  .sync-modal-close { width: 100%; margin-top: 10px; padding: 8px; background: none; border: none; color: var(--gray-500); font-size: 12px; cursor: pointer; }
+
   .tabs { display: flex; background: #fff; border-bottom: 2px solid var(--gray-200); overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
   .tabs::-webkit-scrollbar { display: none; }
   .tab { flex: 0 0 auto; padding: 14px 18px; font-size: 13px; font-weight: 600; color: var(--gray-500); border: none; background: none; cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .15s; }
@@ -154,6 +173,25 @@
   <div class="header-badge">서울특별시공고 제2025-3067호</div>
   <h1>서울시 신혼부부 임차보증금<br>이자지원 계산기</h1>
   <p>소득 입력 → 구간 판정 → 이자 자동 계산</p>
+  <div class="sync-bar">
+    <span id="syncStatus">💾 이 기기에 자동 저장됨</span>
+    <button type="button" class="sync-btn" onclick="openSyncModal()">☁️ 다른 기기와 동기화</button>
+  </div>
+</div>
+
+<!-- 동기화 PIN 모달 -->
+<div id="syncModal" class="sync-modal-overlay" style="display:none">
+  <div class="sync-modal">
+    <h3>다른 기기와 동기화</h3>
+    <p class="sync-modal-desc">4자리 이상 PIN을 입력하세요. 같은 PIN을 다른 기기에서 입력하면 입력값을 불러올 수 있습니다.</p>
+    <input type="password" id="syncPin" inputmode="numeric" placeholder="PIN 입력" maxlength="12">
+    <div class="sync-modal-btns">
+      <button type="button" class="sync-modal-save" onclick="syncSave()">이 기기 값 저장하기</button>
+      <button type="button" class="sync-modal-load" onclick="syncLoad()">저장된 값 불러오기</button>
+    </div>
+    <div id="syncMsg" class="sync-msg"></div>
+    <button type="button" class="sync-modal-close" onclick="closeSyncModal()">닫기</button>
+  </div>
 </div>
 
 <div class="tabs">
@@ -226,6 +264,7 @@
         <div class="form-item">
           <label>COFIX 신잔액 (6개월)</label>
           <input type="number" id="cofix" value="2.50" min="0.5" max="8" step="0.05" oninput="calc()" placeholder="2.50">
+          <div id="cofixLiveNote" style="font-size:11px;color:var(--gray-500);margin-top:4px"></div>
         </div>
         <div class="form-item">
           <label>예비신혼부부 추가지원</label>
@@ -265,6 +304,26 @@
     <div class="card" id="detailCard" style="display:none">
       <div class="card-title">💸 이자 상세 시나리오</div>
       <table class="tbl" id="detailTable"></table>
+    </div>
+
+    <!-- 이자율 → 월이자 빠른 계산기 (독립형) -->
+    <div class="card">
+      <div class="card-title">🧮 이자율 → 월이자 빠른 계산기</div>
+      <div style="font-size:12px;color:var(--gray-500);margin-bottom:12px">위 소득판정과 별개로, 원금과 이자율만 입력해 월이자를 바로 확인할 수 있습니다. (전세대출은 원금 거치 후 이자만 납부하는 방식이 일반적입니다)</div>
+      <div class="loan-grid">
+        <div class="form-item">
+          <label>대출원금</label>
+          <input type="number" id="qc_principal" class="form-input" placeholder="예: 300,000,000" oninput="quickCalc()">
+        </div>
+        <div class="form-item">
+          <label>연 이자율 (%)</label>
+          <input type="number" id="qc_rate" class="form-input" step="0.01" placeholder="예: 3.18" oninput="quickCalc()">
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:6px">
+        <button type="button" class="sync-btn" style="background:var(--blue-light);color:var(--blue-dark);border-color:var(--blue-light)" onclick="fillQuickFromResult()">현재 계산 결과 값 채우기</button>
+      </div>
+      <div id="quickCalcResult"></div>
     </div>
 
   </div>
@@ -648,9 +707,155 @@ function calcConvert() {
   </div>`;
 }
 
+function quickCalc() {
+  const principal = v('qc_principal');
+  const rate = v('qc_rate') / 100;
+  const el = document.getElementById('quickCalcResult');
+  if (!principal || !rate) { el.innerHTML = ''; return; }
+
+  const monthly = principal * rate / 12;
+  const annual = principal * rate;
+  el.innerHTML = `
+    <div class="conv-result ok" style="margin-top:14px">
+      <div class="cv-label">월이자 (원금균등상환 아닌 이자만 납부 기준)</div>
+      <div class="cv-value">${fmt(monthly)}</div>
+      <div class="cv-sub">연이자 ${fmt(annual)} · 2년 총 ${fmt(annual*2)} · 적용금리 ${(rate*100).toFixed(2)}%</div>
+    </div>`;
+}
+
+function fillQuickFromResult() {
+  document.getElementById('qc_principal').value = document.getElementById('loanSlider').value;
+  const cofixPct = v('cofix');
+  const loanRate = cofixPct / 100 + SPREAD;
+  const income = v('a_salary') + v('a_business') + v('b_salary') + v('b_business');
+  const bracket = getBracket(income);
+  const prewedding = v('prewedding') / 100;
+  const childAdd = v('child') / 100;
+  const addSupport = Math.max(prewedding, childAdd);
+  const totalSupport = bracket.support + addSupport;
+  const actualRate = Math.max(loanRate - totalSupport, 0.01);
+  document.getElementById('qc_rate').value = (actualRate * 100).toFixed(2);
+  quickCalc();
+}
+
+// ===== 저장/동기화 =====
+const SAVE_FIELDS = ['a_salary','a_business','b_salary','b_business','loanSlider','cofix','prewedding','child','cv_deposit','cv_monthly','cv_rate','qc_principal','qc_rate'];
+const LOCAL_KEY = 'seoulJeonseSubsidy_v1';
+const SYNC_API = 'https://seoul-jeonse-subsidy-api.yjjn2005.workers.dev/sync';
+
+function collectState() {
+  const state = {};
+  SAVE_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) state[id] = el.value;
+  });
+  return state;
+}
+
+function applyState(state) {
+  if (!state) return;
+  SAVE_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && state[id] !== undefined) el.value = state[id];
+  });
+  onIncomeChange(); onLoanChange(); calc(); buildCofixTab(); calcConvert(); quickCalc();
+}
+
+function saveLocal() {
+  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(collectState())); } catch (e) {}
+}
+
+function restoreLocal() {
+  try {
+    const raw = localStorage.getItem(LOCAL_KEY);
+    if (raw) applyState(JSON.parse(raw));
+  } catch (e) {}
+}
+
+// 입력이 바뀔 때마다 이 기기에 자동 저장 (디바운스)
+let saveTimer = null;
+document.addEventListener('input', () => {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveLocal, 400);
+});
+document.addEventListener('change', saveLocal);
+
+async function sha256Hex(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function openSyncModal() { document.getElementById('syncModal').style.display = 'flex'; }
+function closeSyncModal() { document.getElementById('syncModal').style.display = 'none'; document.getElementById('syncMsg').textContent=''; }
+
+function showSyncMsg(text, ok) {
+  const el = document.getElementById('syncMsg');
+  el.textContent = text;
+  el.className = 'sync-msg ' + (ok ? 'ok' : 'err');
+}
+
+async function syncSave() {
+  const pin = document.getElementById('syncPin').value.trim();
+  if (pin.length < 4) { showSyncMsg('PIN을 4자리 이상 입력하세요', false); return; }
+  showSyncMsg('저장 중...', true);
+  try {
+    const key = await sha256Hex('seouljeonse:' + pin);
+    const res = await fetch(`${SYNC_API}?key=${key}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(collectState()),
+    });
+    if (!res.ok) throw new Error('서버 오류');
+    showSyncMsg('✓ 저장 완료 — 다른 기기에서 같은 PIN으로 불러오세요', true);
+  } catch (e) {
+    showSyncMsg('저장 실패: 네트워크를 확인하세요', false);
+  }
+}
+
+async function syncLoad() {
+  const pin = document.getElementById('syncPin').value.trim();
+  if (pin.length < 4) { showSyncMsg('PIN을 4자리 이상 입력하세요', false); return; }
+  showSyncMsg('불러오는 중...', true);
+  try {
+    const key = await sha256Hex('seouljeonse:' + pin);
+    const res = await fetch(`${SYNC_API}?key=${key}`);
+    if (res.status === 404) { showSyncMsg('저장된 값이 없습니다', false); return; }
+    if (!res.ok) throw new Error('서버 오류');
+    const state = await res.json();
+    applyState(state);
+    saveLocal();
+    showSyncMsg('✓ 불러오기 완료', true);
+    setTimeout(closeSyncModal, 900);
+  } catch (e) {
+    showSyncMsg('불러오기 실패: 네트워크를 확인하세요', false);
+  }
+}
+
+// ===== COFIX 실시간 값 자동 반영 =====
+async function fetchLiveCofix() {
+  try {
+    const res = await fetch('https://kr-stats-api.yjjn2005.workers.dev/cofix');
+    if (!res.ok) return;
+    const data = await res.json();
+    const rate = data?.new_amount?.rate; // 신규취급액기준 COFIX (전세대출 변동금리 기준)
+    if (rate) {
+      const el = document.getElementById('cofix');
+      // 사용자가 이미 값을 수동으로 바꿔놓은 상태(로컬 저장값 존재)라면 덮어쓰지 않음
+      if (!localStorage.getItem(LOCAL_KEY)) {
+        el.value = rate;
+        calc();
+      }
+      const note = document.getElementById('cofixLiveNote');
+      if (note) note.textContent = `실시간 COFIX(신규취급액기준): ${rate}% (공시일 ${data.new_amount.date})`;
+    }
+  } catch (e) { /* 조용히 무시 — 수동 입력값 유지 */ }
+}
+
 // 초기화
+restoreLocal();
 calc();
 buildBracketList(BRACKETS[3], 0.025 + SPREAD, 0.002);
+fetchLiveCofix();
 </script>
 </body>
 </html>
