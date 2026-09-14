@@ -274,7 +274,7 @@
           </select>
         </div>
         <div class="form-item">
-          <label>다자녀 추가지원 <span style="font-size:10px;font-weight:400;color:var(--gray-400)">(예비신혼과 택일)</span></label>
+          <label>다자녀 추가지원</label>
           <select id="child" onchange="calc()">
             <option value="0">미적용</option>
             <option value="0.5">+0.5% (1자녀)</option>
@@ -282,6 +282,16 @@
             <option value="1.5">+1.5% (3자녀)</option>
           </select>
         </div>
+        <div class="form-item">
+          <label>만65세 이상 직계존속 3년+ 동거</label>
+          <select id="elderly" onchange="calc()">
+            <option value="0">미적용</option>
+            <option value="1.0">+1.0% 적용</option>
+          </select>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--gray-500);margin-top:-6px;margin-bottom:14px">
+        ※ 예비신혼부부·다자녀·직계존속 동거 3항목은 합산하되, 서울시 공고 기준 추가 이자지원금리는 최대 1.5%p까지만 적용됩니다.
       </div>
     </div>
 
@@ -542,7 +552,8 @@ function calc() {
 
   const prewedding = v('prewedding') / 100;
   const childAdd = v('child') / 100;
-  const addSupport = Math.max(prewedding, childAdd);
+  const elderlyAdd = v('elderly') / 100;
+  const addSupport = Math.min(prewedding + childAdd + elderlyAdd, 0.015); // 서울시 공고 기준 추가지원 3항목 합산 최대 1.5%p
   const totalSupport = bracket.support + addSupport;
   const actualRate = Math.max(loanRate - totalSupport, 0.01);
   const monthly = loan * actualRate / 12;
@@ -731,7 +742,8 @@ function fillQuickFromResult() {
   const bracket = getBracket(income);
   const prewedding = v('prewedding') / 100;
   const childAdd = v('child') / 100;
-  const addSupport = Math.max(prewedding, childAdd);
+  const elderlyAdd = v('elderly') / 100;
+  const addSupport = Math.min(prewedding + childAdd + elderlyAdd, 0.015);
   const totalSupport = bracket.support + addSupport;
   const actualRate = Math.max(loanRate - totalSupport, 0.01);
   document.getElementById('qc_rate').value = (actualRate * 100).toFixed(2);
@@ -739,7 +751,7 @@ function fillQuickFromResult() {
 }
 
 // ===== 저장/동기화 =====
-const SAVE_FIELDS = ['a_salary','a_business','b_salary','b_business','loanSlider','cofix','prewedding','child','cv_deposit','cv_monthly','cv_rate','qc_principal','qc_rate'];
+const SAVE_FIELDS = ['a_salary','a_business','b_salary','b_business','loanSlider','cofix','prewedding','child','elderly','cv_deposit','cv_monthly','cv_rate','qc_principal','qc_rate'];
 const LOCAL_KEY = 'seoulJeonseSubsidy_v1';
 const SYNC_API = 'https://seoul-jeonse-subsidy-api.yjjn2005.workers.dev/sync';
 
@@ -837,7 +849,7 @@ async function fetchLiveCofix() {
     const res = await fetch('https://kr-stats-api.yjjn2005.workers.dev/cofix');
     if (!res.ok) return;
     const data = await res.json();
-    const rate = data?.new_amount?.rate; // 신규취급액기준 COFIX (전세대출 변동금리 기준)
+    const rate = data?.new_balance?.rate; // 서울시 공식 산식 기준: 신 잔액기준 COFIX
     if (rate) {
       const el = document.getElementById('cofix');
       // 사용자가 이미 값을 수동으로 바꿔놓은 상태(로컬 저장값 존재)라면 덮어쓰지 않음
@@ -846,7 +858,7 @@ async function fetchLiveCofix() {
         calc();
       }
       const note = document.getElementById('cofixLiveNote');
-      if (note) note.textContent = `실시간 COFIX(신규취급액기준): ${rate}% (공시일 ${data.new_amount.date})`;
+      if (note) note.textContent = `실시간 COFIX(신 잔액기준): ${rate}% (공시일 ${data.new_balance.date})`;
     }
   } catch (e) { /* 조용히 무시 — 수동 입력값 유지 */ }
 }
