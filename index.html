@@ -668,8 +668,8 @@ function buildCofixTab() {
   const totalSupport = support + add;
   const liveCofix = v('cofix') || 2.65;
   // 현재 실시간 코픽스를 중심으로 ±0.75%p 범위 시나리오 생성 (0.25% 간격)
-  const center = Math.round(liveCofix / 0.25) * 0.25;
-  const cofixList = [-0.75,-0.5,-0.25,0,0.25,0.5,0.75].map(d => Math.max(center + d, 0.25));
+  // 실시간 신잔액 코픽스를 정확히 중앙값으로 사용 (그리드 반올림 없이)
+  const cofixList = [-0.75,-0.5,-0.25,0,0.25,0.5,0.75].map(d => Math.max(liveCofix + d, 0.25));
   const baseActual = Math.max(liveCofix / 100 + SPREAD - totalSupport, 0.01);
   const baseAnnual = loan * baseActual;
 
@@ -681,7 +681,10 @@ function buildCofixTab() {
     const diff = ann - baseAnnual;
     const isCur = Math.abs(c - liveCofix) < 0.001;
     const diffStr = diff === 0 ? '기준' : (diff > 0 ? '+' + fmt(diff) : '−' + fmt(Math.abs(diff)));
-    html += `<tr${isCur ? ' class="hl"' : ''}><td>${c.toFixed(2)}%${isCur ? ' ★현재' : ''}</td><td>${pct(lr)}</td><td>${pct(ar)}</td><td class="num">${fmt(loan*ar/12)}</td><td class="num">${fmt(ann)}</td><td class="num">${diffStr}</td></tr>`;
+    const cofixCell = isCur
+      ? `<span class="tag red">${c.toFixed(2)}% 이번달</span>`
+      : `${c.toFixed(2)}%`;
+    html += `<tr${isCur ? ' class="hl"' : ''}><td>${cofixCell}</td><td>${pct(lr)}</td><td>${pct(ar)}</td><td class="num">${fmt(loan*ar/12)}</td><td class="num">${fmt(ann)}</td><td class="num">${diffStr}</td></tr>`;
   });
   document.getElementById('cofixDetailTable').innerHTML = html + '</tbody>';
 
@@ -856,10 +859,12 @@ async function fetchLiveCofix() {
       // 사용자가 이미 값을 수동으로 바꿔놓은 상태(로컬 저장값 존재)라면 덮어쓰지 않음
       if (!localStorage.getItem(LOCAL_KEY)) {
         el.value = rate;
+        el.style.color = 'var(--red)';
+        el.style.fontWeight = '700';
         calc();
       }
       const note = document.getElementById('cofixLiveNote');
-      if (note) note.textContent = `실시간 COFIX(신 잔액기준): ${rate}% (공시일 ${data.new_balance.date})`;
+      if (note) note.innerHTML = `이번달 COFIX(신 잔액기준): <span style="color:var(--red);font-weight:700">${rate}%</span> (공시일 ${data.new_balance.date})`;
     }
   } catch (e) { /* 조용히 무시 — 수동 입력값 유지 */ }
 }
