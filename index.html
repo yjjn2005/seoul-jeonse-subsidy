@@ -263,7 +263,7 @@
       <div class="loan-grid">
         <div class="form-item">
           <label>COFIX 신잔액 (6개월)</label>
-          <input type="number" id="cofix" value="2.50" min="0.5" max="8" step="0.05" oninput="calc()" placeholder="2.50">
+          <input type="number" id="cofix" value="2.50" min="0.5" max="8" step="0.05" oninput="onCofixManualInput()" placeholder="2.50">
           <div id="cofixLiveNote" style="font-size:11px;color:var(--gray-500);margin-top:4px"></div>
         </div>
         <div class="form-item">
@@ -549,7 +549,7 @@ function calc() {
   const annual = loan * actualRate;
 
   // 구간 표시
-  buildBracketList(bracket, loanRate, addSupport);
+  buildBracketList(income, loanRate, addSupport);
 
   // COFIX 감도 탭에 현재 소득구간/추가지원 자동 반영
   const cfSupportEl = document.getElementById('cf_support_display');
@@ -647,9 +647,11 @@ function calc() {
     </tbody>`;
 }
 
-function buildBracketList(currentBracket, loanRate, addSupport) {
+function buildBracketList(income, loanRate, addSupport) {
+  // 상단 결과 카드와 100% 동일한 기준(getBracket)으로 독립 재계산하여 표시 불일치를 방지
+  const currentBracket = getBracket(income);
   const html = BRACKETS.map(b => {
-    const isCur = b === currentBracket;
+    const isCur = income > 0 && b.max === currentBracket.max;
     const actual = b.support > 0 ? Math.max(loanRate - b.support - addSupport, 0.01) : null;
     return `<div class="bracket-item${isCur ? ' active' : ''}${b.support === 0 ? ' disabled' : ''}">
       <div class="bi-dot"></div>
@@ -847,6 +849,16 @@ async function syncLoad() {
   }
 }
 
+function onCofixManualInput() {
+  // 사용자가 코픽스 값을 직접 손으로 수정했음을 표시 — 이후엔 자동갱신이 덮어쓰지 않음
+  localStorage.setItem('seoulJeonse_cofixManual', '1');
+  document.getElementById('cofix').style.color = '';
+  document.getElementById('cofix').style.fontWeight = '';
+  const note = document.getElementById('cofixLiveNote');
+  if (note) note.textContent = '수동으로 입력한 값입니다 (자동갱신 안 함)';
+  calc();
+}
+
 // ===== COFIX 실시간 값 자동 반영 =====
 async function fetchLiveCofix() {
   try {
@@ -856,8 +868,9 @@ async function fetchLiveCofix() {
     const rate = data?.new_balance?.rate; // 서울시 공식 산식 기준: 신 잔액기준 COFIX
     if (rate) {
       const el = document.getElementById('cofix');
-      // 사용자가 이미 값을 수동으로 바꿔놓은 상태(로컬 저장값 존재)라면 덮어쓰지 않음
-      if (!localStorage.getItem(LOCAL_KEY)) {
+      // 사용자가 코픽스 값을 직접 손으로 수정한 적이 없다면 항상 최신 공시값으로 갱신
+      // (과거 자동입력 버그로 저장된 구값도 이 로직으로 자동 교정됨)
+      if (localStorage.getItem('seoulJeonse_cofixManual') !== '1') {
         el.value = rate;
         el.style.color = 'var(--red)';
         el.style.fontWeight = '700';
@@ -872,7 +885,6 @@ async function fetchLiveCofix() {
 // 초기화
 restoreLocal();
 calc();
-buildBracketList(BRACKETS[3], 0.025 + SPREAD, 0.002);
 fetchLiveCofix();
 </script>
 </body>
