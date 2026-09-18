@@ -342,13 +342,13 @@
   <div id="tab-cofix" class="panel">
     <div class="info-box">
       COFIX(신잔액 6개월)는 매월 15일 전국은행연합회가 공시합니다.<br>
-      대출금리 = COFIX + 가산금리 1.45% (협약 고정) | COFIX ±0.25%p → 3억 기준 연 ±₩750,000 변동
+      아래 소득구간·추가지원은 <strong>계산기 탭에서 입력한 값이 자동으로 반영</strong>됩니다. 대출금액만 바꿔서 시나리오를 비교해보세요.
     </div>
     <div class="card">
       <div class="card-title">⚙️ 감도 분석 조건</div>
       <div class="loan-grid">
         <div class="form-item">
-          <label>대출금액</label>
+          <label>대출금액 (시나리오용, 독립 조정 가능)</label>
           <select id="cf_loan" onchange="buildCofixTab()">
             <option value="100000000">₩1억</option>
             <option value="150000000">₩1.5억</option>
@@ -358,23 +358,12 @@
           </select>
         </div>
         <div class="form-item">
-          <label>소득구간 지원금리</label>
-          <select id="cf_support" onchange="buildCofixTab()">
-            <option value="3.0">3.0% (0~3천만원)</option>
-            <option value="2.5">2.5% (3~6천만원)</option>
-            <option value="2.0">2.0% (6~9천만원)</option>
-            <option value="1.5" selected>1.5% (9천~1.1억)</option>
-            <option value="1.0">1.0% (1.1~1.3억)</option>
-          </select>
+          <label>소득구간 지원금리 <span style="font-size:10px;font-weight:400;color:var(--gray-400)">(계산기 탭 자동연동)</span></label>
+          <input type="text" id="cf_support_display" class="form-input" disabled style="background:var(--gray-100);color:var(--gray-700);font-weight:700">
         </div>
         <div class="form-item">
-          <label>추가 지원 (예비신혼/다자녀)</label>
-          <select id="cf_add" onchange="buildCofixTab()">
-            <option value="0.2" selected>+0.2% (예비신혼)</option>
-            <option value="0.5">+0.5% (1자녀)</option>
-            <option value="1.0">+1.0% (2자녀)</option>
-            <option value="0">없음</option>
-          </select>
+          <label>추가 지원 합산 <span style="font-size:10px;font-weight:400;color:var(--gray-400)">(계산기 탭 자동연동, 최대 1.5%)</span></label>
+          <input type="text" id="cf_add_display" class="form-input" disabled style="background:var(--gray-100);color:var(--gray-700);font-weight:700">
         </div>
       </div>
     </div>
@@ -562,6 +551,17 @@ function calc() {
   // 구간 표시
   buildBracketList(bracket, loanRate, addSupport);
 
+  // COFIX 감도 탭에 현재 소득구간/추가지원 자동 반영
+  const cfSupportEl = document.getElementById('cf_support_display');
+  const cfAddEl = document.getElementById('cf_add_display');
+  if (cfSupportEl && cfAddEl) {
+    cfSupportEl.value = pct(bracket.support) + ' (' + bracket.label + ')';
+    cfSupportEl.dataset.val = bracket.support;
+    cfAddEl.value = pct(addSupport);
+    cfAddEl.dataset.val = addSupport;
+    buildCofixTab();
+  }
+
   // 소득 미입력
   if (income === 0) {
     document.getElementById('mainResult').innerHTML = `
@@ -663,29 +663,30 @@ function buildBracketList(currentBracket, loanRate, addSupport) {
 
 function buildCofixTab() {
   const loan = parseInt(document.getElementById('cf_loan').value);
-  const support = parseFloat(document.getElementById('cf_support').value) / 100;
-  const add = parseFloat(document.getElementById('cf_add').value) / 100;
+  const support = parseFloat(document.getElementById('cf_support_display').dataset.val || 0);
+  const add = parseFloat(document.getElementById('cf_add_display').dataset.val || 0);
   const totalSupport = support + add;
-  const cofixList = [1.75, 2.00, 2.25, 2.50, 2.75, 3.00, 3.25, 3.50];
-  const BASE_COFIX = 0.025;
-  const baseActual = Math.max(BASE_COFIX + SPREAD - totalSupport, 0.01);
+  const liveCofix = v('cofix') || 2.65;
+  // 현재 실시간 코픽스를 중심으로 ±0.75%p 범위 시나리오 생성 (0.25% 간격)
+  const center = Math.round(liveCofix / 0.25) * 0.25;
+  const cofixList = [-0.75,-0.5,-0.25,0,0.25,0.5,0.75].map(d => Math.max(center + d, 0.25));
+  const baseActual = Math.max(liveCofix / 100 + SPREAD - totalSupport, 0.01);
   const baseAnnual = loan * baseActual;
 
-  let html = '<thead><tr><th>COFIX</th><th>대출금리</th><th>실부담금리</th><th class="num">월 이자</th><th class="num">연간 이자</th><th class="num">현재 대비</th></tr></thead><tbody>';
+  let html = '<thead><tr><th>COFIX(신잔액)</th><th>대출금리</th><th>실부담금리</th><th class="num">월 이자</th><th class="num">연간 이자</th><th class="num">현재 대비</th></tr></thead><tbody>';
   cofixList.forEach(c => {
     const lr = c / 100 + SPREAD;
     const ar = Math.max(lr - totalSupport, 0.01);
     const ann = loan * ar;
     const diff = ann - baseAnnual;
-    const isCur = Math.abs(c - 2.50) < 0.001;
+    const isCur = Math.abs(c - liveCofix) < 0.001;
     const diffStr = diff === 0 ? '기준' : (diff > 0 ? '+' + fmt(diff) : '−' + fmt(Math.abs(diff)));
-    html += `<tr${isCur ? ' class="hl"' : ''}><td>${c.toFixed(2)}%${isCur ? ' ★' : ''}</td><td>${pct(lr)}</td><td>${pct(ar)}</td><td class="num">${fmt(loan*ar/12)}</td><td class="num">${fmt(ann)}</td><td class="num">${diffStr}</td></tr>`;
+    html += `<tr${isCur ? ' class="hl"' : ''}><td>${c.toFixed(2)}%${isCur ? ' ★현재' : ''}</td><td>${pct(lr)}</td><td>${pct(ar)}</td><td class="num">${fmt(loan*ar/12)}</td><td class="num">${fmt(ann)}</td><td class="num">${diffStr}</td></tr>`;
   });
   document.getElementById('cofixDetailTable').innerHTML = html + '</tbody>';
 
-  // 대출금액별 표
-  const curCofix = 0.025;
-  const curLoanRate = curCofix + SPREAD;
+  // 대출금액별 표 (현재 실시간 코픽스 기준)
+  const curLoanRate = liveCofix / 100 + SPREAD;
   const loans = [50000000, 100000000, 150000000, 200000000, 250000000, 300000000];
   let html2 = '<thead><tr><th>대출금액</th><th class="num">총이자(연)</th><th class="num">지원(연)</th><th class="num">본인부담(연)</th><th class="num">본인부담(월)</th></tr></thead><tbody>';
   loans.forEach(l => {
